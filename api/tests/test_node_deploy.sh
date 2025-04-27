@@ -28,7 +28,7 @@ DEPLOY_RESPONSE=$(curl -s -X POST \
   -d '{
     "repo_url": "https://github.com/bradtraversy/node_crash_course.git",
     "env_vars": {
-      "PORT": "3000",
+      "PORT": "5000",
       "NODE_ENV": "production"
     }
   }' \
@@ -37,7 +37,7 @@ DEPLOY_RESPONSE=$(curl -s -X POST \
 echo "Deploy response: $DEPLOY_RESPONSE"
 
 # Extract the app name from the response
-APP_NAME=$(echo $DEPLOY_RESPONSE | grep -o '"app_name":"[^"]*' | cut -d'"' -f4)
+APP_NAME=$(echo $DEPLOY_RESPONSE | jq -r '.app_name')
 
 if [ -z "$APP_NAME" ]; then
   echo -e "${RED}Failed to get app name from response.${NC}"
@@ -50,25 +50,12 @@ echo -e "${GREEN}Deployed application with name: $APP_NAME${NC}"
 echo -e "${YELLOW}Listing deployments...${NC}"
 curl -s http://localhost:5002/list
 
-# Wait for the pod to be ready
-echo -e "${YELLOW}Waiting for pod to become ready...${NC}"
-kubectl wait --for=condition=ready pod -l app=$APP_NAME --timeout=120s
-
 echo -e "${YELLOW}Pod status:${NC}"
 kubectl get pods -l app=$APP_NAME
 
 # Check service
 echo -e "${YELLOW}Service details:${NC}"
 kubectl get service $APP_NAME
-
-# Get service URL and test it
-echo -e "${YELLOW}Testing service...${NC}"
-URL=$(echo $DEPLOY_RESPONSE | grep -o '"service_url":"[^"]*' | cut -d'"' -f4)
-echo "Service URL: $URL"
-
-echo -e "${YELLOW}Trying to access the service (this may take a minute to be ready):${NC}"
-sleep 10
-curl -s -m 5 $URL || echo -e "${YELLOW}Service not responding yet. This is normal for the first deployment.${NC}"
 
 # Prompt user to delete
 echo -e "${YELLOW}Press Enter to delete the deployment or Ctrl+C to keep it running...${NC}"
